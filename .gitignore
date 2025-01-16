@@ -1,6 +1,9 @@
 # Prerequisites
 *.d
 
+# Ignore .vscode directory .vscode/
+.vscode/
+
 # Object files
 *.o
 *.ko
