@@ -15,7 +15,6 @@ typedef struct Block {
 #define BLOCK_SIZE sizeof(Block)
 
 extern char memory_pool[MEMORY_POOL_SIZE];          // Simulated Heap
-
 extern Block* free_list;                            // Head of the free list 
 
 // Exposed Function Declarations

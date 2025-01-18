@@ -16,81 +16,6 @@ void initialize_memory_pool() {
     free_list->next = NULL;                              
     free_list->free = 1;                                
 }
-/**
- * Frees the memory pointed to by ptr.
- * If the pointer is NULL, prints an error message and returns.
- * Performs backward and forward coalescing to merge adjacent free blocks.
- *
- * @param ptr A pointer to the memory to be freed.
- */
-void magic_free_legacy(void* ptr) {
-    if (!ptr){
-        printf("Error: Attempted to free Null pointer\n");
-        return;
-    }
-
-    Block* block_to_free = (Block*)ptr - 1; // block pointer
-    if(block_to_free->free) {
-        printf("Error: Memory Requested to free is already free\n");
-        return;
-    }
-    block_to_free->free = 1;
-
-    if (free_list == NULL) {
-        free_list = block_to_free;
-        return;
-    }
-    // Traverse the free list to update pointers
-    Block* prev = NULL;
-    Block* current = free_list;
-
-    while (current) {    
-        if (current > block_to_free) {  
-            break;
-        }
-        prev = current;
-        current = current->next;
-    }
-
-    // Insert the block back into the free list (sorted order)  // middle or end of list case
-    if (prev) {
-        // middle or end of list
-        int coellece = 0;
-        // coallece right?
-        if(block_to_free->next && block_to_free->next->free){
-            block_to_free->size += BLOCK_SIZE + block_to_free->next->size;
-            block_to_free->next = block_to_free->next->next;
-            coellece++;
-        }
-
-        // coallece left?
-        if((Block*)((char*)prev + BLOCK_SIZE + prev->size) == block_to_free) {
-            prev->size += BLOCK_SIZE + block_to_free->size;
-            prev->next = block_to_free->next;
-            block_to_free=prev; // point to merged block
-            coellece++;
-        }
-
-        if (!coellece) {
-            prev->next = block_to_free;
-            block_to_free->next = current;
-        }
-
-    } 
-    else {    // head of the list
-        // coallece right?
-        if(block_to_free->next && block_to_free->next->free){
-            block_to_free->size += BLOCK_SIZE + block_to_free->next->size;
-            block_to_free->next = block_to_free->next->next;
-        }
-        else {
-            block_to_free->next = free_list;
-        } 
-        block_to_free->next = current;     
-        free_list = block_to_free;
-    }
-}
-
 int coalesce_right(Block* block) {
     if (block->next && block->next->free) {
         block->size += BLOCK_SIZE + block->next->size;
@@ -138,7 +63,13 @@ void insert_block(Block *block_to_free) {
         free_list = block_to_free;
     }
 }
-
+/**
+ * Frees the memory pointed to by ptr.
+ * If the pointer is NULL, prints an error message and returns.
+ * Performs backward and forward coalescing to merge adjacent free blocks.
+ *
+ * @param ptr A pointer to the memory to be freed.
+ */
 void magic_free(void* ptr) {
     if (!ptr) {
         printf("Error: Attempted to free Null pointer\n");
