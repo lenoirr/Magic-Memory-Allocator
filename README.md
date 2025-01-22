@@ -114,6 +114,7 @@ The code includes test functions to verify the implementation:
 - `test_allocate_and_free_all()`
 - `test_fragmentation_and_coalescing()`
 - `test_double_free()`
+
 To run all tests:
 ```c
 int main() {
