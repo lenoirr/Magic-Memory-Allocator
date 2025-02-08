@@ -133,6 +133,107 @@ void clear_memory_pool() {
     initialize_memory_pool();
 }
 
+void test_calloc() {
+    TEST_START("Calloc");
+
+    initialize_memory_pool();
+    void* ptr = magic_calloc(1, 128);
+    assert(ptr != NULL);
+
+    Block* block = (Block*)((char*)ptr - BLOCK_SIZE);
+    assert(block->size == 128 && block->free == 0);
+
+    TEST_SUCCESS("Calloc");
+
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc_null_pointer() {
+    TEST_START("Realloc Null Pointer");
+
+    initialize_memory_pool();
+    void* ptr = magic_realloc(NULL, 128);
+    assert(ptr != NULL && "Failed to allocate memory with realloc for NULL pointer.");
+    
+    Block* block = (Block*)((char*)ptr - BLOCK_SIZE);
+    assert(block->size == 128 && block->free == 0);
+
+    TEST_SUCCESS("Realloc Null Pointer");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc_smaller_size() {
+    TEST_START("Realloc Smaller Size");
+
+    initialize_memory_pool();
+    void* ptr = magic_malloc(256);
+    assert(ptr != NULL && "Failed to allocate initial memory.");
+
+    void* new_ptr = magic_realloc(ptr, 128);
+    assert(new_ptr == ptr && "Realloc to smaller size should return the same pointer.");
+
+    Block* block = (Block*)((char*)new_ptr - BLOCK_SIZE);
+    assert(block->size == 256 && block->free == 0);
+
+    TEST_SUCCESS("Realloc Smaller Size");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc_larger_size() {
+    TEST_START("Realloc Larger Size");
+
+    initialize_memory_pool();
+    void* ptr = magic_malloc(128);
+    assert(ptr != NULL && "Failed to allocate initial memory.");
+
+    void* new_ptr = magic_realloc(ptr, 256);
+    assert(new_ptr != NULL && "Failed to realloc to larger size.");
+    
+    Block* block = (Block*)((char*)new_ptr - BLOCK_SIZE);
+    assert(block->size == 256 && block->free == 0);
+
+    TEST_SUCCESS("Realloc Larger Size");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc_free_block() {
+    TEST_START("Realloc Free Block");
+
+    initialize_memory_pool();
+    void* ptr = magic_malloc(128);
+    assert(ptr != NULL && "Failed to allocate initial memory.");
+
+    magic_free(ptr);
+    void* new_ptr = magic_realloc(ptr, 256);
+    assert(new_ptr != NULL && "Failed to realloc a free block.");
+
+    Block* block = (Block*)((char*)new_ptr - BLOCK_SIZE);
+    assert(block->size == 256 && block->free == 0);
+
+    TEST_SUCCESS("Realloc Free Block");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc_zero_size() {
+    TEST_START("Realloc Zero Size");
+
+    initialize_memory_pool();
+    void* ptr = magic_malloc(128);
+    assert(ptr != NULL && "Failed to allocate initial memory.");
+
+    void* new_ptr = magic_realloc(ptr, 0);
+    assert(new_ptr == NULL && "Realloc to zero size should return NULL.");
+
+    TEST_SUCCESS("Realloc Zero Size");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
 // Run all tests
 void run_all_tests() {
     test_allocate_full_pool();
@@ -142,4 +243,10 @@ void run_all_tests() {
     test_allocate_and_free_all();
     test_fragmentation_and_coalescing();
     test_double_free();
+    test_calloc();
+    test_realloc_null_pointer();
+    test_realloc_smaller_size();
+    test_realloc_larger_size();
+    test_realloc_free_block();
+    test_realloc_zero_size();
 }

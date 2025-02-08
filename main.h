@@ -20,6 +20,8 @@ extern Block* free_list;                            // Head of the free list
 // Exposed Function Declarations
 void initialize_memory_pool();
 void* magic_malloc(size_t size);
+void* magic_calloc(size_t num, size_t size);
+void* magic_realloc(void* ptr, size_t new_size);
 void magic_free(void* ptr);
 void visualize_memory_pool();
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "main.h"
+#include <string.h>
 #include "test.h"
 
 #define ALIGNMENT 8
@@ -89,6 +90,8 @@ void magic_free(void* ptr) {
     }
 
     insert_block(block_to_free);
+
+    //ptr = NULL;
 }
 
 
@@ -155,6 +158,45 @@ void* magic_malloc(size_t size) {
     return(void*)(current + 1);
 }
 
+void* magic_calloc(size_t num, size_t size)
+{
+    size_t total_size = num * size;
+    void* ptr = magic_malloc(total_size);
+    if (ptr) memset(ptr, 0, total_size);    
+    return ptr;
+}
+
+void* magic_realloc(void* ptr, size_t new_size)
+{
+    if (!ptr) return magic_malloc(new_size);
+
+    Block* current_block = (Block*)ptr - 1; // Block pointer
+    if (current_block->free) {
+        return magic_malloc(new_size);
+    }
+
+    if (new_size <= 0) {
+        magic_free(ptr);
+        return NULL;
+    }
+
+    size_t current_size = current_block->size;
+    if (new_size <= current_size) return ptr;
+
+    // Block* next_block = current_block->next;
+    // if (next_block && next_block->free && (current_size + sizeof(Block) + next_block->size) >= new_size) {  // check if right adjacent block can accomodate new size
+    //     // Merge the current block with the next free block
+    //     current_block->size += sizeof(Block) + next_block->size;
+    //     current_block->next = next_block->next;
+    //     return ptr;  // No need to copy, memory is already expanded
+    // }
+
+    magic_free(ptr);
+    void* new_ptr = magic_malloc(new_size);
+    memcpy(new_ptr,ptr,new_size);
+    return new_ptr;
+}
+
 /**
  * Prints the current state of the memory pool.
  * Displays metadata and whether each block is allocated or free.
@@ -187,7 +229,7 @@ void visualize_memory_pool()
     }
 }
 
-int main ()
+int main () 
 {
     run_all_tests();
     return 0;
