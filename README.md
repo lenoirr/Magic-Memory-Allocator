@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Magic Memory Allocator** is a custom dynamic memory allocation implementation in C that uses a simulated heap and linked list to manage memory blocks. It provides `magic_malloc` for memory allocation, `magic_free` for freeing memory, and utilities for visualization and testing. This project demonstrates techniques like memory splitting, coalescing, and safe memory management practices.
+The **Magic Memory Allocator** is a custom dynamic memory allocation implementation in C that uses a simulated heap and a linked list to manage memory blocks. It provides `magic_malloc` for memory allocation, `magic_free` for freeing memory, and utilities for visualization and testing. This project demonstrates techniques like memory splitting, coalescing, and safe memory management practices.
 
 ---
 
@@ -114,6 +114,7 @@ The code includes test functions to verify the implementation:
 - `test_allocate_and_free_all()`
 - `test_fragmentation_and_coalescing()`
 - `test_double_free()`
+
 To run all tests:
 ```c
 int main() {
