@@ -1,5 +1,14 @@
 #include "test.h"
 #include "main.h"
+#include <time.h>
+#include <windows.h>
+#include <string.h>
+// Performance Testings
+
+static void log_performance(const char* operation, size_t size, LARGE_INTEGER start, LARGE_INTEGER end, LARGE_INTEGER frequency) {
+    double time_taken = (double)(end.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart;
+    printf("%s of %zu bytes took %.5f ms\n", operation, size, time_taken);
+}
 
 // Test Implementations
 
@@ -7,7 +16,16 @@ void test_allocate_full_pool() {
     TEST_START("Allocate Full Pool");
 
     initialize_memory_pool();
+    
+    LARGE_INTEGER frequency, start_time, end_time;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start_time);
+
     void* ptr = magic_malloc(MEMORY_POOL_SIZE - BLOCK_SIZE);
+
+    QueryPerformanceCounter(&end_time);
+    log_performance("Allocate Full Pool", 0, start_time, end_time, frequency);
+
     assert(ptr != NULL && "Failed to allocate full pool.");
 
     Block* block = (Block*)((char*)ptr - BLOCK_SIZE);
@@ -84,23 +102,86 @@ void test_allocate_and_free_all() {
     clear_memory_pool();
 }
 
-void test_fragmentation_and_coalescing() {
-    TEST_START("Fragmentation and Coalescing");
+void test_left_coalescing() {
+    TEST_START("Left Coalescing");
 
     initialize_memory_pool();
+
     void* ptr1 = magic_malloc(128);
     void* ptr2 = magic_malloc(256);
-    void* ptr3 = magic_malloc(64);
+    void* ptr3 = magic_malloc(128);
+    void* ptr4 = magic_malloc(64);
 
     magic_free(ptr2);
-    magic_free(ptr1);
 
-    assert(free_list->size == 128 + 256 + BLOCK_SIZE && "Incorrect free block size after freeing two blocks.");
-    assert(free_list->next != NULL && "Free list should only contain one block.");
-    assert(free_list->free == 1 && "Free block should be marked as free.");
+    assert(free_list == (ptr2 - BLOCK_SIZE) && "Free list not updated to start at pt2");
+    magic_free(ptr3);
 
-    TEST_SUCCESS("Fragmentation and Coalescing");
+    Block* block = (Block*)((char*)ptr2 - BLOCK_SIZE);
+    assert(block->size == 256 + BLOCK_SIZE + 128 && "Left coalescing failed.");
+    assert(block->free == 1 && "Block should be marked as free.");
 
+    Block* block4 = (Block*)((char*)ptr4 - BLOCK_SIZE);
+    assert(block->next == block4->next && "Failed to update next in new free block.");
+
+    TEST_SUCCESS("Left Coalescing");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_right_coalescing() {
+    TEST_START("Right Coalescing");
+
+    initialize_memory_pool();
+
+    void* ptr1 = magic_malloc(128);
+    void* ptr2 = magic_malloc(256);
+    void* ptr3 = magic_malloc(128);
+    void* ptr4 = magic_malloc(64);
+
+    magic_free(ptr3);
+    assert(free_list == (ptr3 - BLOCK_SIZE) && "Free list not updated to start at pt3");
+
+    magic_free(ptr2);
+
+    Block* block = (Block*)((char*)ptr2 - BLOCK_SIZE);
+    assert(block->size == 256 + BLOCK_SIZE + 128 && "Right coalescing failed.");
+    assert(block->free == 1 && "Block should be marked as free.");
+    assert(free_list == (ptr2 - BLOCK_SIZE) && "Free list not updated to start at pt2");
+
+    Block* block4 = (Block*)((char*)ptr4 - BLOCK_SIZE);
+    assert(block->next == block4->next && "ptr2 next not updated to next free block");
+
+    TEST_SUCCESS("Right Coalescing");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_full_coalescing() {
+    TEST_START("Full Coalescing");
+
+    initialize_memory_pool();
+
+    void* ptr1 = magic_malloc(128);
+    void* ptr2 = magic_malloc(256);
+    void* ptr3 = magic_malloc(128);
+    void* ptr4 = magic_malloc(64);
+
+    magic_free(ptr2);
+    magic_free(ptr4);
+
+    Block* block4 = (Block*)((char*)ptr4 - BLOCK_SIZE);
+    assert(block4->size == 64 + BLOCK_SIZE + 328 && "right coalescing failed");
+    magic_free(ptr3);
+
+
+    Block* block = (Block*)((char*)ptr2 - BLOCK_SIZE);
+    assert(free_list == block && "Free list not updated to start at block2");
+    assert(block->size == 256 + BLOCK_SIZE + 128 + BLOCK_SIZE + 64 + BLOCK_SIZE + 328 && "Full coalescing failed.");
+    assert(block->free == 1 && "Block should be marked as free.");
+    assert(block->next == NULL && "Block not updated to point to null");
+
+    TEST_SUCCESS("Full Coalescing");
     visualize_memory_pool();
     clear_memory_pool();
 }
@@ -233,6 +314,68 @@ void test_realloc_zero_size() {
     visualize_memory_pool();
     clear_memory_pool();
 }
+/// ------------------------------- PERFORMANCE TESTS ------------------------------- //
+
+void test_worst_case_malloc() {
+    TEST_START("Worst Case Malloc");
+
+    initialize_memory_pool();
+    
+    LARGE_INTEGER frequency, start_time, end_time;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start_time);
+
+    // Allocate the entire memory pool in 1 Byte increments
+    size_t alloc_size = 1;
+    void* ptr = NULL;
+    size_t total_allocated = (MEMORY_POOL_SIZE / BLOCK_SIZE) - 1;
+    while (1) {
+        ptr = magic_malloc(1);
+        if (!ptr) break;
+    }
+
+    QueryPerformanceCounter(&end_time);
+    log_performance("Worst Case Malloc", total_allocated, start_time, end_time, frequency);
+
+    TEST_SUCCESS("Worst Case Malloc");
+    //visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_worst_case_free() {
+    TEST_START("Worst Case Free");
+
+    initialize_memory_pool();
+
+    // Allocate the entire memory pool in 1 Byte increments
+    size_t alloc_size = 1;
+    void* ptr = NULL;
+    size_t total_allocated = 0;
+    while (1) {
+        ptr = magic_malloc(1);
+        total_allocated++;
+        if (!ptr) break;
+    }
+
+    LARGE_INTEGER frequency, start_time, end_time;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start_time);
+
+    // Free the entire memory pool in 1 Byte increments
+    Block* block_to_free = (Block*)memory_pool;
+    while ((char*)block_to_free < memory_pool + MEMORY_POOL_SIZE) {
+        Block* next_block = (Block*)((char*)block_to_free + BLOCK_SIZE + block_to_free->size);
+        magic_free((void*)(block_to_free + 1));
+        block_to_free = next_block;
+    }
+
+    QueryPerformanceCounter(&end_time);
+    log_performance("Worst Case Free", 0, start_time, end_time, frequency);
+
+    TEST_SUCCESS("Worst Case Free");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
 
 // Run all tests
 void run_all_tests() {
@@ -241,7 +384,7 @@ void run_all_tests() {
     test_allocate_zero_bytes();
     test_allocate_larger_than_pool();
     test_allocate_and_free_all();
-    test_fragmentation_and_coalescing();
+    //test_fragmentation_and_coalescing();
     test_double_free();
     test_calloc();
     test_realloc_null_pointer();
@@ -249,4 +392,15 @@ void run_all_tests() {
     test_realloc_larger_size();
     test_realloc_free_block();
     test_realloc_zero_size();
+}
+
+void run_performace_tests(){
+    test_worst_case_malloc();
+    test_worst_case_free();
+}
+
+void run_coalesing_tests(){
+    test_right_coalescing();
+    test_left_coalescing();
+    test_full_coalescing();
 }
