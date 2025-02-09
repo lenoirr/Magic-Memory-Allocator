@@ -3,6 +3,7 @@
 #include "main.h"
 #include <string.h>
 #include "test.h"
+#include <time.h>
 
 #define ALIGNMENT 8
 #define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))  // Ensures size is a multiple of the alignment
@@ -17,10 +18,10 @@ void initialize_memory_pool() {
     free_list->next = NULL;                              
     free_list->free = 1;                                
 }
-int coalesce_right(Block* block) {
-    if (block->next && block->next->free) {
-        block->size += BLOCK_SIZE + block->next->size;
-        block->next = block->next->next;
+int coalesce_right(Block* next_free, Block* block) {
+    if ((Block*)((char*)block + BLOCK_SIZE + block->size) == next_free) {
+        block->size += BLOCK_SIZE + next_free->size;
+        block->next = next_free->next;
         return 1;
     }
     return 0;
@@ -29,7 +30,7 @@ int coalesce_right(Block* block) {
 int coalesce_left(Block* prev, Block* block) {
     if ((Block*)((char*)prev + BLOCK_SIZE + prev->size) == block) { // if previous free block is adjacent to the current block
         prev->size += BLOCK_SIZE + block->size;
-        prev->next = block->next;
+        //prev->next = block->next;
         return 1;
     }
     return 0;
@@ -39,9 +40,13 @@ void insert_block(Block *block_to_free) {
     Block *prev = NULL;
     Block *current = free_list;
 
-    // Traverse the free list to find the correct position
+    // Traverse the free list to find the correct position, add block to free list and update order
     while (current) {
         if (current > block_to_free) {
+            // block_to_free->next = current;  // attach block to free to next
+            // if(prev) {
+            //     prev->next = block_to_free;     // attach previous to block to free
+            // }
             break;
         }
         prev = current;
@@ -50,17 +55,31 @@ void insert_block(Block *block_to_free) {
 
     // Insert the block back into the free list (sorted order)
     if (prev) { // middle or end of list
-        if (!coalesce_right(block_to_free) && !coalesce_left(prev, block_to_free)) {
+
+        int right = coalesce_right(current,block_to_free);
+        if (right)
+        {
+            prev->next = block_to_free;
+            current = block_to_free->next;
+        }
+        int left =  coalesce_left(prev, block_to_free);
+        if (left)
+        {
+            prev->next = current;
+        }
+        if (!right && ! left)
+        {
             prev->next = block_to_free;
             block_to_free->next = current;
         }
     }
     else { // head of the list
         // coallece right?
-        if (!coalesce_right(block_to_free)) {
-            block_to_free->next = free_list;
+        if (!coalesce_right(current,block_to_free)) {
+            //block_to_free->next = free_list;
+            block_to_free->next = current;
         }
-        block_to_free->next = current;
+        //block_to_free->next = current;
         free_list = block_to_free;
     }
 }
@@ -86,6 +105,7 @@ void magic_free(void* ptr) {
 
     if (free_list == NULL) {
         free_list = block_to_free;
+        free_list->next = NULL;
         return;
     }
 
@@ -232,5 +252,8 @@ void visualize_memory_pool()
 int main () 
 {
     run_all_tests();
+    run_coalesing_tests();
+    run_performace_tests();
+
     return 0;
 }
