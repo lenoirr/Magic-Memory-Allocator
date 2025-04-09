@@ -252,8 +252,11 @@ void test_realloc_smaller_size() {
     void* ptr = magic_malloc(256);
     assert(ptr != NULL && "Failed to allocate initial memory.");
 
+    *(int*)ptr = 3;
+
     void* new_ptr = magic_realloc(ptr, 128);
     assert(new_ptr == ptr && "Realloc to smaller size should return the same pointer.");
+    assert(*(int*)new_ptr == 3 && "Realloc did not properly copy data.");
 
     Block* block = (Block*)((char*)new_ptr - BLOCK_SIZE);
     assert(block->size == 256 && block->free == 0);
@@ -373,6 +376,24 @@ void test_worst_case_free() {
     log_performance("Worst Case Free", 0, start_time, end_time, frequency);
 
     TEST_SUCCESS("Worst Case Free");
+    visualize_memory_pool();
+    clear_memory_pool();
+}
+
+void test_realloc(){
+    TEST_START("Realloc");
+
+    initialize_memory_pool();
+    void* ptr = magic_malloc(128);
+    assert(ptr != NULL && "Failed to allocate initial memory.");
+
+    void* new_ptr = magic_realloc(ptr, 256);
+    assert(new_ptr != NULL && "Failed to realloc to larger size.");
+    
+    Block* block = (Block*)((char*)new_ptr - BLOCK_SIZE);
+    assert(block->size == 256 && block->free == 0);
+
+    TEST_SUCCESS("Realloc");
     visualize_memory_pool();
     clear_memory_pool();
 }

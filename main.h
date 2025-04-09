@@ -11,7 +11,7 @@ typedef struct Block {
 } Block;
 
 // Block size constant
-#define MEMORY_POOL_SIZE 1024
+#define MEMORY_POOL_SIZE 1024 
 #define BLOCK_SIZE sizeof(Block)
 
 extern char memory_pool[MEMORY_POOL_SIZE];          // Simulated Heap

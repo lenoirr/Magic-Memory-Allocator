@@ -36,6 +36,7 @@ int coalesce_left(Block* prev, Block* block) {
     return 0;
 }
 
+
 void insert_block(Block *block_to_free) {
     Block *prev = NULL;
     Block *current = free_list;
@@ -147,7 +148,7 @@ void* magic_malloc(size_t size) {
         return NULL;
     }
 
-    //size = ALIGN(size);
+    size = ALIGN(size);
     Block* prev = NULL;
     Block* current = free_list;
 
