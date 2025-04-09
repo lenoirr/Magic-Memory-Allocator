@@ -7,7 +7,7 @@
 
 static void log_performance(const char* operation, size_t size, LARGE_INTEGER start, LARGE_INTEGER end, LARGE_INTEGER frequency) {
     double time_taken = (double)(end.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart;
-    printf("%s of %zu bytes took %.5f ms\n", operation, size, time_taken);
+    printf("%s of %llu bytes took %.5f ms\n", operation, size, time_taken);
 }
 
 // Test Implementations
